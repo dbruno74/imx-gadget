@@ -44,6 +44,19 @@ parts:
     prime:
       - -*
 
+  optee-fde:
+    plugin: dump
+    source: https://git.launchpad.net/~ondrak/+git/optee-uc-fde
+    source-type: git
+    source-branch: master
+    override-pull: |
+      craftctl default
+      git apply ${CRAFT_PROJECT_DIR}/0001-ta-disable-TA-lock.patch
+    organize:
+      '*': optee-fde/
+    prime:
+      - -*
+
 build-packages:
   - bison
   - build-essential
