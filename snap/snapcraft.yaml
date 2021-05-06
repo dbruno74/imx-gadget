@@ -15,6 +15,35 @@ architectures:
 confinement: strict
 grade: stable
 
+parts:
+  arm-trusted-firmware:
+    plugin: nil
+    source: https://github.com/nxp-imx/imx-atf.git
+    source-type: git
+    source-tag: lf-5.15.71-2.2.0
+    source-depth: 1
+    override-build: |
+      platform="imx8mm"
+      make \
+        CROSS_COMPILE=${CRAFT_ARCH_TRIPLET}- \
+        PLAT=${platform} \
+        BUILD_BASE=${CRAFT_PART_BUILD}/build \
+        bl31 \
+        -j$(nproc)
+      make \
+        CROSS_COMPILE=${CRAFT_ARCH_TRIPLET}- \
+        PLAT=${platform} \
+        BUILD_BASE=${CRAFT_PART_BUILD}/build-optee \
+        SPD=opteed \
+        bl31 \
+        -j$(nproc)
+      cp ${CRAFT_PART_BUILD}/build/${platform}/release/bl31.bin \
+         ${CRAFT_PART_INSTALL}/bl31-${platform}.bin
+      cp ${CRAFT_PART_BUILD}/build-optee/${platform}/release/bl31.bin \
+         ${CRAFT_PART_INSTALL}/bl31-${platform}.bin-optee
+    prime:
+      - -*
+
 build-packages:
   - bison
   - build-essential
