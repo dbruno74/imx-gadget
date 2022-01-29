@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "/usr/bin/p11tool ${@}"
+exec /usr/bin/p11tool ${@}
