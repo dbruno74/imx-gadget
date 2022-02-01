@@ -2,3 +2,4 @@
 
 # when tee is connected, we can enable tee-supplicant service
 snapctl start --enable ${SNAP_INSTANCE_NAME}.tee-supplicant
+snapctl start --enable ${SNAP_INSTANCE_NAME}.p11-kit-servers
