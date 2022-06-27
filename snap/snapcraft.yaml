@@ -75,7 +75,6 @@ parts:
         plugin: nil
         source: https://source.codeaurora.org/external/imx/imx-optee-os.git
         source-type: git
-        # source-tag: rel_imx_5.4.70_2.3.2
         source-tag: lf-5.10.72-2.2.0
         source-depth: 1
         override-build: |
