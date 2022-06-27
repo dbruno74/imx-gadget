@@ -21,7 +21,7 @@ environment:
 apps:
     tee-supplicant:
         adapter: none
-        command: sbin/tee-supplicant --fs-parent-path $SNAP_COMMON --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
+        command: usr/sbin/tee-supplicant --fs-parent-path $SNAP_COMMON --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
         daemon: simple
         install-mode: disable
         plugs:
@@ -123,10 +123,10 @@ parts:
             - CFG_TEE_CLIENT_LOAD_PATH=""
             - CFG_TA_TEST_PATH=0
             - CFG_TEE_SUPP_LOG_LEVEL=0
-            - SBINDIR=/sbin
+            - SBINDIR=/usr/sbin
             - LIBDIR=/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
         stage:
-            - sbin
+            - usr/sbin
             - usr/lib/*/lib*so*
 
     optee-fde:
