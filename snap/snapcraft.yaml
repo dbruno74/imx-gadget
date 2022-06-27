@@ -170,7 +170,7 @@ parts:
                -e 's/mmc_boot_part=\(.*\)\\0"/'"${mmc_boot_part}"'\\0"/g' \
                ${SNAPCRAFT_PART_BUILD}/include/configs/*.h
             # Add GIT revision to the local version
-            head=`git rev-parse --verify --short HEAD 2> /dev/null`
+            head=$(git rev-parse --verify --short HEAD 2> /dev/null)
             printf "%s%s%s" "-5.4.70-2.3.0" +g $head > .scmversion
             export CROSS_COMPILE="aarch64-linux-gnu-"
             export CC="aarch64-linux-gnu-gcc"
