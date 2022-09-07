@@ -21,12 +21,11 @@ environment:
 apps:
     tee-supplicant:
         adapter: none
-        command: usr/sbin/tee-supplicant --fs-parent-path $SNAP_COMMON --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
+        command: usr/sbin/tee-supplicant --fs-parent-path /run/mnt/ubuntu-save/$SNAP_NAME/optee-fs --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
         daemon: simple
         install-mode: disable
         plugs:
             - tee
-            - network-bind
 
 parts:
     arm-trusted-firmware:
