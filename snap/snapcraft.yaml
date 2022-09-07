@@ -96,7 +96,6 @@ parts:
             cp -r ${SNAPCRAFT_STAGE}/optee-fde/ta/fde_key_handler ${SNAPCRAFT_PART_BUILD}/ta/
             # determine keys to be used
             export TA_PUBLIC_KEY="${SNAPCRAFT_STAGE}/ta-keys/ta_public.pem"
-            export TA_SIGN_KEY="${SNAPCRAFT_STAGE}/ta-keys/ta_private.pem"
             make O=${SNAPCRAFT_PART_BUILD}/out -j$(nproc)
             make O=${SNAPCRAFT_PART_BUILD}/out -j$(nproc) \
                  CFG_EARLY_TA=y \
