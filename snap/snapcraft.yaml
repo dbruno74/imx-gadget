@@ -369,3 +369,13 @@ build-packages:
     - python3-pycryptodome
     - wget
     - zlib1g-dev
+
+slots:
+    tee-plugins:
+        interface: content
+        write:
+            - $SNAP_COMMON/usr/lib/tee-supplicant/plugins
+    tee-tas:
+        interface: content
+        write:
+            - $SNAP_COMMON/lib/optee_armtz
