@@ -116,7 +116,7 @@ parts:
       export CFG_CORE_HEAP_SIZE=0x00100000
       # set NXP platform
       export PLATFORM=imx
-      export PLATFORM_FLAVOR=mx8mmevk
+      export PLATFORM_FLAVOR=mx8mpevk
       # add optee-fde TA
       cp -r ${CRAFT_STAGE}/optee-fde/ta/fde_key_handler ${CRAFT_PART_BUILD}/ta/
       # determine keys to be used
