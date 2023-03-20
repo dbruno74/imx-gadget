@@ -1,58 +1,84 @@
 name: imx8mp-evk
 summary: NXP i.MX8M Plus EVK support package
 description: |
- Support files for booting i.MX8M Plus EVK board
-version: 20-1
+ Support files for booting i.MX8M Mini EVK board
+
+version: 22-1
 type: gadget
 
-base: core20
+base: core22
 
 architectures:
   - build-on: [amd64, arm64]
-    run-on: arm64
+    build-for: arm64
 
 confinement: strict
 grade: stable
 
 environment:
-    LD_LIBRARY_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
+    LD_LIBRARY_PATH: ${SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}
     PATH: ${SNAP}/bin:${PATH}
 
 apps:
     tee-supplicant:
-        adapter: none
-        command: usr/sbin/tee-supplicant --fs-parent-path $SNAP_COMMON --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
+        command: usr/sbin/tee-supplicant --fs-parent-path $SNAP_SAVE_DATA/optee-fs --ta-dir $SNAP_COMMON/lib/optee_armtz --plugin-path $SNAP_COMMON/usr/lib/tee-supplicant/plugins
         daemon: simple
         install-mode: disable
         plugs:
             - tee
 
+    p11-kit-servers:
+        command: usr/bin/p11-kit-servers start
+        stop-command: usr/bin/p11-kit-servers stop
+        daemon: forking
+        install-mode: disable
+        plugs:
+            - tee
+        slots:
+            - pkcs11-optee-slot-0
+            - pkcs11-optee-slot-1
+            - pkcs11-optee-slot-2
+
+    p11tool-optee:
+        command: usr/bin/p11tool --provider $SNAP/usr/lib/aarch64-linux-gnu/libckteec.so
+        plugs:
+            - home
+            - tee
+            - pkcs11
+
+    pkcs11-tool-optee:
+        command: usr/bin/pkcs11-tool --module $SNAP/usr/lib/aarch64-linux-gnu/libckteec.so
+        plugs:
+            - home
+            - tee
+            - pkcs11
+
 parts:
     arm-trusted-firmware:
         plugin: nil
-        source: https://source.codeaurora.org/external/imx/imx-atf.git
+        source: https://github.com/nxp-imx/imx-atf.git
         source-type: git
-        source-tag: rel_imx_5.4.70_2.3.2
+        source-tag: lf-5.15.32-2.0.0
         source-depth: 1
         override-build: |
-            platform="imx8mp"
+            platform="imx8mm"
             make \
-                CROSS_COMPILE=${SNAPCRAFT_ARCH_TRIPLET}- \
+                CROSS_COMPILE=${CRAFT_ARCH_TRIPLET}- \
                 PLAT=${platform} \
-                BUILD_BASE=${SNAPCRAFT_PART_BUILD}/build \
+                BUILD_BASE=${CRAFT_PART_BUILD}/build \
                 bl31 \
                 -j$(nproc)
             make \
-                CROSS_COMPILE=${SNAPCRAFT_ARCH_TRIPLET}- \
+                CROSS_COMPILE=${CRAFT_ARCH_TRIPLET}- \
                 PLAT=${platform} \
-                BUILD_BASE=${SNAPCRAFT_PART_BUILD}/build-optee \
+                BUILD_BASE=${CRAFT_PART_BUILD}/build-optee \
                 SPD=opteed \
                 bl31 \
                 -j$(nproc)
-            cp ${SNAPCRAFT_PART_BUILD}/build/${platform}/release/bl31.bin \
-               ${SNAPCRAFT_PART_INSTALL}/bl31-${platform}.bin
-            cp ${SNAPCRAFT_PART_BUILD}/build-optee/${platform}/release/bl31.bin \
-               ${SNAPCRAFT_PART_INSTALL}/bl31-${platform}.bin-optee
+            cp ${CRAFT_PART_BUILD}/build/${platform}/release/bl31.bin \
+               ${CRAFT_PART_INSTALL}/bl31-${platform}.bin
+            cp ${CRAFT_PART_BUILD}/build-optee/${platform}/release/bl31.bin \
+               ${CRAFT_PART_INSTALL}/bl31-${platform}.bin-optee
         prime:
             - -*
 
@@ -72,40 +98,40 @@ parts:
             - optee-fde
             - optee-keys
         plugin: nil
-        source: https://source.codeaurora.org/external/imx/imx-optee-os.git
+        source: https://github.com/nxp-imx/imx-optee-os.git
         source-type: git
-        source-tag: lf-5.10.72-2.2.0
+        source-tag: lf-5.15.32-2.0.0
         source-depth: 1
         override-build: |
             export ARCH="arm"
-            export CROSS_COMPILE="${SNAPCRAFT_ARCH_TRIPLET}-"
-            export CROSS_COMPILE_core="${SNAPCRAFT_ARCH_TRIPLET}-"
-            export CROSS_COMPILE_ta_arm64="${SNAPCRAFT_ARCH_TRIPLET}-"
+            export CROSS_COMPILE="${CRAFT_ARCH_TRIPLET}-"
+            export CROSS_COMPILE_core="${CRAFT_ARCH_TRIPLET}-"
+            export CROSS_COMPILE_ta_arm64="${CRAFT_ARCH_TRIPLET}-"
             export CFG_USER_TA_TARGETS="ta_arm64"
             export CFG_ARM64_core=y
-            export DEBUG=0 \
-            export CFG_TEE_CORE_LOG_LEVEL=1 \
-            export CFG_TEE_TA_LOG_LEVEL=1 \
+            export DEBUG=0
+            export CFG_TEE_CORE_LOG_LEVEL=1
+            export CFG_TEE_TA_LOG_LEVEL=1
             export CFG_TEE_BENCHMARK=n
-            export CFG_CORE_HEAP_SIZE=262144
+            export CFG_TEE_RAM_VA_SIZE=0x00280000
+            export CFG_CORE_HEAP_SIZE=0x00100000
             # set NXP platform
             export PLATFORM=imx
-            export PLATFORM_FLAVOR=mx8mpevk
+            export PLATFORM_FLAVOR=mx8mmevk
             # add optee-fde TA
-            cp -r ${SNAPCRAFT_STAGE}/optee-fde/ta/fde_key_handler ${SNAPCRAFT_PART_BUILD}/ta/
+            cp -r ${CRAFT_STAGE}/optee-fde/ta/fde_key_handler ${CRAFT_PART_BUILD}/ta/
             # determine keys to be used
-            TA_PUBLIC_KEY="${SNAPCRAFT_STAGE}/ta-keys/ta_public.pem"
-            TA_SIGN_KEY="${SNAPCRAFT_STAGE}/ta-keys/ta_private.pem"
-            make O=${SNAPCRAFT_PART_BUILD}/out -j$(nproc)
-            make O=${SNAPCRAFT_PART_BUILD}/out -j$(nproc) \
+            export TA_PUBLIC_KEY="${CRAFT_STAGE}/ta-keys/ta_public.pem"
+            make O=${CRAFT_PART_BUILD}/out -j$(nproc)
+            make O=${CRAFT_PART_BUILD}/out -j$(nproc) \
                  CFG_EARLY_TA=y \
                  EARLY_TA_PATHS="out/ta/pkcs11/fd02c9da-306c-48c7-a49c-bbd827ae86ee.stripped.elf \
                                  out/ta/trusted_keys/f04a0fe7-1f5d-4b9b-abf7-619b85b4ce8c.stripped.elf \
                                  out/ta/fde_key_handler/fd1b2a86-3668-11eb-adc1-0242ac120002.stripped.elf"
-            ${SNAPCRAFT_ARCH_TRIPLET}-objcopy \
+            ${CRAFT_ARCH_TRIPLET}-objcopy \
                  -O binary \
-                 ${SNAPCRAFT_PART_BUILD}/out/core/tee.elf \
-                 ${SNAPCRAFT_PART_INSTALL}/tee.bin
+                 ${CRAFT_PART_BUILD}/out/core/tee.elf \
+                 ${CRAFT_PART_INSTALL}/tee.bin
         prime:
             - -*
 
@@ -113,25 +139,29 @@ parts:
         plugin: make
         source: https://github.com/OP-TEE/optee_client.git
         source-type: git
-        source-branch: master
+        source-tag: 3.18.0
         source-depth: 1
         make-parameters:
             - ARCH="arm64"
             - DEBUG=0
-            - CROSS_COMPILE="${SNAPCRAFT_ARCH_TRIPLET}-"
+            - CROSS_COMPILE="${CRAFT_ARCH_TRIPLET}-"
             - CFG_TEE_CLIENT_LOAD_PATH=""
             - CFG_TA_TEST_PATH=0
             - CFG_TEE_SUPP_LOG_LEVEL=0
             - SBINDIR=/usr/sbin
-            - LIBDIR=/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
+            - LIBDIR=/usr/lib/${CRAFT_ARCH_TRIPLET}
         stage:
             - usr/sbin
             - usr/lib/*/lib*so*
 
     optee-fde:
         plugin: dump
-        source: git+ssh://git.launchpad.net/~ondrak/+git/optee-uc-fde
+        source: https://git.launchpad.net/~ondrak/+git/optee-uc-fde
         source-type: git
+        source-branch: master
+        override-pull: |
+            craftctl default
+            git apply ${CRAFT_PROJECT_DIR}/0001-ta-disable-TA-lock.patch
         organize:
             '*': optee-fde/
         prime:
@@ -154,37 +184,37 @@ parts:
         plugin: nil
         source: https://git.launchpad.net/~ondrak/+git/u-boot
         source-type: git
-        source-tag: rel_imx_5.4.70_2.3.2-uc
+        source-tag: lf-5.15.52-2.1.0-uc
         source-depth: 1
         override-build: |
             # copy in place dtsi with pub part of kernel signing key
-            cp ${SNAPCRAFT_STAGE}/u-boot-pubkey.dtsi \
-               ${SNAPCRAFT_PART_BUILD}/arch/arm/dts/u-boot-pubkey.dtsi
+            cp ${CRAFT_STAGE}/u-boot-pubkey.dtsi \
+               ${CRAFT_PART_BUILD}/arch/arm/dts/u-boot-pubkey.dtsi
             # update mmc_seed_part and mmc_boot_part from uc.lst
-            mmc_seed_part="$(grep mmc_seed_part ${SNAPCRAFT_STAGE}/blobs/uc.lst | sed -e 's/^# //')"
-            mmc_boot_part="$(grep mmc_boot_part ${SNAPCRAFT_STAGE}/blobs/uc.lst | sed -e 's/^# //')"
+            mmc_seed_part="$(grep mmc_seed_part ${CRAFT_STAGE}/blobs/uc.lst | sed -e 's/^# //')"
+            mmc_boot_part="$(grep mmc_boot_part ${CRAFT_STAGE}/blobs/uc.lst | sed -e 's/^# //')"
             sed -i \
                -e 's/mmc_seed_part=\(.*\)\\0"/'"${mmc_seed_part}"'\\0"/g' \
                -e 's/mmc_boot_part=\(.*\)\\0"/'"${mmc_boot_part}"'\\0"/g' \
-               ${SNAPCRAFT_PART_BUILD}/include/configs/*.h
+               ${CRAFT_PART_BUILD}/include/configs/*.h
             # Add GIT revision to the local version
             head=$(git rev-parse --verify --short HEAD 2> /dev/null)
-            printf "%s%s%s" "-5.4.70-2.3.0" +g $head > .scmversion
+            printf "%s%s%s" "-5.15.32-2.0.0" +g $head > .scmversion
             export CROSS_COMPILE="aarch64-linux-gnu-"
             export CC="aarch64-linux-gnu-gcc"
             # TODO: export ARCH=arm64
-            make imx8mp_evk_config
+            make imx8mm_evk_config
             make -j$(nproc)
-            cp u-boot.bin ${SNAPCRAFT_PART_INSTALL}/u-boot.bin
-            cp spl/u-boot-spl.bin ${SNAPCRAFT_PART_INSTALL}/u-boot-spl.bin
-            mkdir -p ${SNAPCRAFT_PART_INSTALL}/imx-boot-tools
-            cp u-boot-nodtb.bin ${SNAPCRAFT_PART_INSTALL}/imx-boot-tools
+            cp u-boot.bin ${CRAFT_PART_INSTALL}/u-boot.bin
+            cp spl/u-boot-spl.bin ${CRAFT_PART_INSTALL}/u-boot-spl.bin
+            mkdir -p ${CRAFT_PART_INSTALL}/imx-boot-tools
+            cp u-boot-nodtb.bin ${CRAFT_PART_INSTALL}/imx-boot-tools
             cp u-boot.dtb \
-               ${SNAPCRAFT_PART_INSTALL}/imx-boot-tools/imx8mp-evk.dtb
+               ${CRAFT_PART_INSTALL}/imx-boot-tools/imx8mm-evk.dtb
             # copy tools/mkimage tool for imx-boot stage
-            cp tools/mkimage ${SNAPCRAFT_PART_INSTALL}
-            tools/mkenvimage -r -s 4096 -o ${SNAPCRAFT_PART_INSTALL}/boot.sel - < /dev/null
-            touch ${SNAPCRAFT_PART_INSTALL}/uboot.conf
+            cp tools/mkimage ${CRAFT_PART_INSTALL}
+            tools/mkenvimage -r -s 4096 -o ${CRAFT_PART_INSTALL}/boot.sel - < /dev/null
+            touch ${CRAFT_PART_INSTALL}/uboot.conf
         prime:
             - boot.sel
             - uboot.conf
@@ -197,7 +227,7 @@ parts:
         override-build: |
             chmod +x firmware-imx.bin
             ./firmware-imx.bin --force --auto-accept
-            cp -r firmware-imx-*/firmware ${SNAPCRAFT_PART_INSTALL}
+            cp -r firmware-imx-*/firmware ${CRAFT_PART_INSTALL}
         prime:
             - -*
 
@@ -208,31 +238,31 @@ parts:
             - optee-os
             - u-boot
         plugin: nil
-        source: https://source.codeaurora.org/external/imx/imx-mkimage.git
+        source: https://github.com/nxp-imx/imx-mkimage.git
         source-type: git
-        source-tag: rel_imx_5.4.70_2.3.2
+        source-tag: lf-5.15.32-2.0.0
         source-depth: 1
         override-build: |
-            platform="imx8mp"
+            platform="imx8mm"
             # firmware files
-            for ddr_firmware in lpddr4_pmu_train_1d_imem_202006.bin lpddr4_pmu_train_1d_dmem_202006.bin lpddr4_pmu_train_2d_imem_202006.bin lpddr4_pmu_train_2d_dmem_202006.bin; do
-              cp ${SNAPCRAFT_STAGE}/firmware/ddr/synopsys/${ddr_firmware} iMX8M
+            for ddr_firmware in lpddr4_pmu_train_1d_imem.bin lpddr4_pmu_train_1d_dmem.bin lpddr4_pmu_train_2d_imem.bin lpddr4_pmu_train_2d_dmem.bin; do
+              cp ${CRAFT_STAGE}/firmware/ddr/synopsys/${ddr_firmware} iMX8M
             done
-            cp ${SNAPCRAFT_STAGE}/firmware/hdmi/cadence/signed_dp_imx8m.bin iMX8M
-            cp ${SNAPCRAFT_STAGE}/firmware/hdmi/cadence/signed_hdmi_imx8m.bin iMX8M
+            cp ${CRAFT_STAGE}/firmware/hdmi/cadence/signed_dp_imx8m.bin iMX8M
+            cp ${CRAFT_STAGE}/firmware/hdmi/cadence/signed_hdmi_imx8m.bin iMX8M
             # atf
-            cp ${SNAPCRAFT_STAGE}/bl31-${platform}.bin-optee iMX8M/bl31.bin
+            cp ${CRAFT_STAGE}/bl31-${platform}.bin-optee iMX8M/bl31.bin
             # optee
-            cp ${SNAPCRAFT_STAGE}/tee.bin iMX8M
+            cp ${CRAFT_STAGE}/tee.bin iMX8M
             # u-boot
-            cp ${SNAPCRAFT_STAGE}/u-boot.bin iMX8M
-            cp ${SNAPCRAFT_STAGE}/u-boot-spl.bin iMX8M
-            cp ${SNAPCRAFT_STAGE}/imx-boot-tools/u-boot-nodtb.bin iMX8M
-            cp ${SNAPCRAFT_STAGE}/imx-boot-tools/${platform}-evk.dtb iMX8M
+            cp ${CRAFT_STAGE}/u-boot.bin iMX8M
+            cp ${CRAFT_STAGE}/u-boot-spl.bin iMX8M
+            cp ${CRAFT_STAGE}/imx-boot-tools/u-boot-nodtb.bin iMX8M
+            cp ${CRAFT_STAGE}/imx-boot-tools/${platform}-evk.dtb iMX8M
             # setup link to mkimage_uboot
-            ln -sf ${SNAPCRAFT_STAGE}/mkimage iMX8M/mkimage_uboot
-            make SOC=iMX8MP flash_evk
-            cp iMX8M/flash.bin ${SNAPCRAFT_PART_INSTALL}/
+            ln -sf ${CRAFT_STAGE}/mkimage iMX8M/mkimage_uboot
+            make SOC=iMX8MM flash_evk
+            cp iMX8M/flash.bin ${CRAFT_PART_INSTALL}/
         organize:
             flash.bin: blobs/imx-boot.bin
 
@@ -259,7 +289,7 @@ parts:
           # default 1st partition offset is 1MB, unless defined otherwise
           partition_offset=0
           unset mmc_boot_part mmc_seed_part
-          for p in $(yq eval '.volumes.[].structure.[].name' ${SNAPCRAFT_PROJECT_DIR}/gadget.yaml)
+          for p in $(yq eval '.volumes.[].structure.[].name' ${CRAFT_PROJECT_DIR}/gadget.yaml)
           do
             # ignore bare structures
             if [ "${p}" != "null" ]; then
@@ -274,9 +304,9 @@ parts:
 
               # include partitions in the list
               export p=${p}
-              p_offset=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .offset' ${SNAPCRAFT_PROJECT_DIR}/gadget.yaml)
-              p_size=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .size' ${SNAPCRAFT_PROJECT_DIR}/gadget.yaml)
-              p_type=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .type' ${SNAPCRAFT_PROJECT_DIR}/gadget.yaml)
+              p_offset=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .offset' ${CRAFT_PROJECT_DIR}/gadget.yaml)
+              p_size=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .size' ${CRAFT_PROJECT_DIR}/gadget.yaml)
+              p_type=$(yq eval '.volumes.[].structure.[] | select(.name == env(p)) | .type' ${CRAFT_PROJECT_DIR}/gadget.yaml)
               p_size=$(convert_size ${p_size})
               gpt_partitions="${gpt_partitions};name=${p},size=${p_size},start=${p_offset},type=${p_type}"
               if [ "${partition_offset}" == "0" ]; then
@@ -299,7 +329,7 @@ parts:
             fi
           done
 
-          cat << EOF > ${SNAPCRAFT_PART_INSTALL}/uc.lst
+          cat << EOF > ${CRAFT_PART_INSTALL}/uc.lst
           uuu_version 1.4.69
 
           # This command will be run when i.MX6/7 i.MX8MM, i.MX8MQ
@@ -352,6 +382,19 @@ parts:
         build-snaps:
             - yq
 
+    p11-kit-helpers:
+        plugin: nil
+        override-build: |
+           install -D -m 755 \
+             ${CRAFT_PROJECT_DIR}/p11-kit-servers \
+             ${CRAFT_PART_INSTALL}/usr/bin/p11-kit-servers
+           install -D -m 755 \
+             ${CRAFT_PROJECT_DIR}/p11tool \
+             ${CRAFT_PART_INSTALL}/usr/bin/p11tool
+           install -D -m 755 \
+             ${CRAFT_PROJECT_DIR}/pkcs11-tool \
+             ${CRAFT_PART_INSTALL}/usr/bin/pkcs11-tool
+
 build-packages:
     - bison
     - build-essential
@@ -361,7 +404,7 @@ build-packages:
     - libxml2-dev
     - libssl-dev
     - python3
-    - python3-crypto
+    - python3-cryptography
     - python3-pyelftools
     - python3-pycryptodome
     - wget
@@ -376,3 +419,12 @@ slots:
         interface: content
         write:
             - $SNAP_COMMON/lib/optee_armtz
+    pkcs11-optee-slot-0:
+        interface: pkcs11
+        pkcs11-socket: /run/p11-kit/optee-slot-0
+    pkcs11-optee-slot-1:
+        interface: pkcs11
+        pkcs11-socket: /run/p11-kit/optee-slot-1
+    pkcs11-optee-slot-2:
+        interface: pkcs11
+        pkcs11-socket: /run/p11-kit/optee-slot-2
